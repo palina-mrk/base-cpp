@@ -1,0 +1,3 @@
+/home/palina/otus/base-cpp/hw6/test/build/CMakeFiles/test.dir
+/home/palina/otus/base-cpp/hw6/test/build/CMakeFiles/edit_cache.dir
+/home/palina/otus/base-cpp/hw6/test/build/CMakeFiles/rebuild_cache.dir
