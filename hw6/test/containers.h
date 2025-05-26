@@ -81,6 +81,33 @@ class SeqContainer: public IContainers<T>{
       for(int i = 0; i < N; ++i)
         real_first[i] = arr[i];
     }
+    SeqContainer(const SeqContainer<T>& cont) {
+      real_size = (cont.N < 4 ? 8 : 2*cont.N);
+      N = cont.N;
+      real_first = new T[real_size];
+      for(int i = 0; i < N; ++i)
+        real_first[i] = cont.real_first[i];
+    }
+    SeqContainer(SeqContainer<T>&& cont) {
+      real_size = cont.real_size;
+      N = cont.N;
+      real_first = cont.real_first;
+    }
+    SeqContainer& operator=(const SeqContainer<T>& cont){
+      if(real_size < cont.N)
+        resize(cont.N < 4 ? 8 : 2*cont.N);
+      N = cont.N;
+      for(int i = 0; i < N; ++i)
+        real_first[i] = cont.real_first[i];
+      return *this;
+    }
+    SeqContainer& operator=(SeqContainer<T>&& cont) {
+      real_size = cont.real_size;
+      N = cont.N;
+      delete[] real_first;
+      real_first = cont. real_first;
+      return *this;
+    }
     std::size_t size() override {return N; }
     void push_back(const T& obj) override  {
       if(N == real_size)
@@ -151,16 +178,8 @@ template<typename T>
 struct Node {
   Node<T>* next;
   T data;
-//  T& operator*{ return *data; } 
 };
 
-template<typename T>
-struct DoubleNode {
-  DoubleNode<T>* next;
-  DoubleNode<T>* prev;
-  T data;
-//  T& operator*{ return *data; } 
-};
 
 /* списковый контейнер в одну сторону */
 template <typename T>
@@ -197,6 +216,66 @@ class ListContainer: public IContainers<T>{
       tail->data = arr[len - 1];
       tail->next = nullptr;
       N = len;
+    }
+    ListContainer(const ListContainer<T>& cont){
+      N = cont.N;
+      if(!N){
+        tail = nullptr;
+        top  = nullptr;
+        return;
+      }
+      top = new Node<T>;
+      tail = top;
+      Node<T>* tmp = cont.top;
+      while(tmp->next){
+        tail->data = tmp->data;
+        tail->next = new Node<T>;
+        tail = tail->next;
+        tmp = tmp->next;
+      }
+      tail->data = tmp->data;
+      tail->next = nullptr;
+    }
+    ListContainer(ListContainer<T>&& cont){
+      N = cont.N;
+      top = cont.top;
+      tail = cont.tail;
+    }
+    ListContainer& operator=(const ListContainer<T>& cont){
+      while (top) {
+        tail = top->next;
+        delete top;
+        top = tail;
+      }
+      N = cont.N;
+      if(!N){
+        tail = nullptr;
+        top  = nullptr;
+        return *this;
+      }
+      top = new Node<T>;
+      tail = top;
+      Node<T>* tmp = cont.top;
+      while(tmp->next){
+        tail->data = tmp->data;
+        tail->next = new Node<T>;
+        tail = tail->next;
+        tmp = tmp->next;
+      }
+      tail->data = tmp->data;
+      tail->next = nullptr;
+      return *this;
+    }
+    ListContainer& operator=(ListContainer<T>&& cont){
+      while (top) {
+        tail = top->next;
+        delete top;
+        top = tail;
+      }
+      N = cont.N;
+      top = cont.top;
+      tail = cont.tail;
+      return *this;
     }
     std::size_t size() override {return N; }
     void push_back(const T& obj) override {
@@ -281,19 +360,3 @@ class ListContainer: public IContainers<T>{
       return tmp->data;
     }
 };
-/*
-template <typename T>
-class DoubleListContainer: public IContainers<T>{
-  public: 
-    override ~ListContainer();
-    override ListContainer();
-    override void push_back() = 0;
-    override void insert(std::size_t i);
-    override void erase(std::size_t i);
-    override T& operator[](std::size_t i);
-  private:
-    DoubleNode<T>* top;
-    DoubleNode<T>* tail;
-};
-*/
-//# include <containres.ipp>
