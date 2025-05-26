@@ -10,6 +10,12 @@ class IContainers {
     virtual void erase(std::size_t ind) = 0;
     virtual std::size_t size() = 0;
     virtual T& operator[](std::size_t i) = 0;
+  template <typename U>
+  friend std::ostream& 
+  operator<<(std::ostream& stream, IContainers<U>& cont);
+  template <typename U>
+  friend std::ostream& 
+  operator<<(std::ostream& stream, IContainers<U>* cont);
 };
 
 class Err{
@@ -103,22 +109,18 @@ class SeqContainer: public IContainers<T>{
       for(int j = ind; j < N; ++j)
         real_first[j] = real_first[j + 1];
     }
-    T& operator[](std::size_t ind)  override {
-      if(ind > N || ind < 0){
+    T& operator[](std::size_t ind) override {
+      if(ind >= N || ind < 0){
         Err::indx();
         return *real_first;
       }
       return real_first[ind];
     }
-
-  template <typename U>
-  friend std::ostream& 
-  operator<<(std::ostream& stream, SeqContainer<U>& cont);
 };
 
 template <typename T>
 std::ostream& 
-operator<<(std::ostream& stream, SeqContainer<T>& cont){
+operator<<(std::ostream& stream, IContainers<T>& cont){
       std::size_t N = cont.size();
       if(!N)
         stream << "Empty container!\n";
@@ -130,36 +132,156 @@ operator<<(std::ostream& stream, SeqContainer<T>& cont){
       return stream;
    }
 
-/*
+template <typename T>
+std::ostream& 
+operator<<(std::ostream& stream, IContainers<T>* cont){
+      std::size_t N = cont->size();
+      if(!N)
+        stream << "Empty container!\n";
+      else{
+        for(int i = 0; i < N; ++i)
+          stream << (*cont)[i] << ' ';
+        stream <<'\n';
+      }
+      return stream;
+   }
+
+
 template<typename T>
 struct Node {
-  Node* next = nullptr;
+  Node<T>* next;
   T data;
-  T& operator*{ return *data; } 
-}
+//  T& operator*{ return *data; } 
+};
 
-template<typename T>{
+template<typename T>
 struct DoubleNode {
-  Node* next = nullptr;
-  Node* prev = nullptr;
+  DoubleNode<T>* next;
+  DoubleNode<T>* prev;
   T data;
-  T& operator*{ return *data; } 
-}
+//  T& operator*{ return *data; } 
+};
 
+/* списковый контейнер в одну сторону */
 template <typename T>
 class ListContainer: public IContainers<T>{
-  public: 
-    override ~ListContainer();
-    override ListContainer();
-    override void push_back() = 0;
-    override void insert(std::size_t i);
-    override void erase(std::size_t i);
-    override T& operator[](std::size_t i);
   private:
     Node<T>* top;
     Node<T>* tail;
-};
+    std::size_t N;
+  public: 
+    ~ListContainer(){
+      while (top) {
+        tail = top->next;
+        delete top;
+        top = tail;
+      }
+      N = 0;
+    }
+    ListContainer(): N{0}, top{nullptr}, tail{nullptr} {}
+    ListContainer(const T* arr, std::size_t len){
+      if(len <= 0){
+        Err::arr_siz();
+        N = 0;
+        top = nullptr;
+        tail = nullptr;
+        return;
+      }
+      top = new Node<T>;
+      tail = top;
+      for(std::size_t i = 0; i < len - 1; ++i){
+        tail->data = arr[i];
+        tail->next = new Node<T>;
+        tail = tail->next;
+      }
+      tail->data = arr[len - 1];
+      tail->next = nullptr;
+      N = len;
+    }
+    std::size_t size() override {return N; }
+    void push_back(const T& obj) override {
+      if(!N) {
+        top = new Node<T>;
+        tail = top;
+      } else {
+        tail->next = new Node<T>;
+        tail = tail->next;
+      }
+      tail->data = obj;
+      tail->next = nullptr;
+      ++N;
+    }
+    void insert(const T& obj, std::size_t ind) override {
+      if(ind > N || ind < 0){
+        Err::indx();
+        return;
+      } else if(ind == N) {
+        push_back(obj);
+        return;
+      } else if(!ind) {
+        Node<T>* tmp = new Node<T>;
+        tmp->next = top;
+        tmp->data = obj;
+        top = tmp;
+        ++N;
+        return;
+      } else { 
+        /* ind от 1 до N - 1 */
+        Node<T> *previous = top, *p_next;
+        while(--ind)
+          previous = previous->next;
 
+        p_next = previous->next;
+        previous->next = new Node<T>;
+        previous = previous->next;
+        previous->data = obj;
+        previous->next = p_next;
+        ++N;
+      }
+    }
+    void erase(std::size_t ind) override{
+      if(ind >= N || ind < 0){
+        Err::indx();
+        return;
+      } else if (!N) {
+        Err::arr_siz();
+        return;
+      } else if(!ind) {
+        Node<T>* tmp = top->next;
+        delete top;
+        top = tmp;
+        --N;
+        if(!N)
+          tail = nullptr;
+        return;
+      } else { 
+        /* ind от 1 до N - 1 */
+        Node<T> *previous = top, *p_next;
+        while(--ind)
+          previous = previous->next;
+        /* удалиь надо previous->next == эл-т с индексом ind */
+        p_next = previous->next;
+        previous->next = p_next->next;
+        delete p_next;
+        if(!previous->next)
+          tail = previous;
+        --N;
+      }
+    }
+    T& operator[](std::size_t ind) override {
+      if(ind >= N || ind < 0){
+        Err::indx();
+        if(top)
+          return top->data;
+        exit(1);
+      }
+      Node<T>* tmp = top;
+      while(ind--)
+        tmp = tmp->next;
+      return tmp->data;
+    }
+};
+/*
 template <typename T>
 class DoubleListContainer: public IContainers<T>{
   public: 
